@@ -1,67 +1,60 @@
-"Example code"
-
 from dataclasses import dataclass, field
-from typing import Optional
+import torch
 
-# task configs
-from source.tasks.navigation.navigation_cfg import NavigationCfg
-
-# controller configs (optional) -> we must devolpe this class! (Not coded yet)
-from source.config.mppi_cfg import MPPIConfig
+from source.simulator.envs.mppi_env_cfg import MPPIEnvCfg
 
 
-# -------------------------------------------------
-# Full Config (Top-level)
-# -------------------------------------------------
+# =========================
+# Cost
+# =========================
 @dataclass
-class MPPINavigationCfg:
-    """
-    Top-level configuration for entire system.
+class CostCfg:
+    target_v: float = 8.0
 
-    This acts as:
-    - experiment config
-    - entry-point config
-    """
+    goal_weight: float = 1.0
+    vel_weight: float = 1.0
+    control_weight: float = 0.1
+    collision_weight: float = 5.0
 
-    # -------------------------
-    # Task
-    # -------------------------
-    task: NavigationCfg = field(default_factory=NavigationCfg)
-
-    # -------------------------
-    # Controller (Optional)
-    # -------------------------
-    mppi: Optional[MPPIConfig] = None
-
-    # -------------------------
-    # Global settings (optional)
-    # -------------------------
-    seed: int = 42
-    device: str = "cuda"
+    goal_tolerance: float = 0.2
 
 
+# =========================
+# Termination
+# =========================
 @dataclass
-class TDMPCNavigationCfg:
+class TerminationCfg:
+    use_goal: bool = True
+    use_collision: bool = True
+    use_out_of_bounds: bool = True
+    use_timeout: bool = True
+
+    max_steps: int = 200
+    goal_tolerance: float = 0.2
+
+
+# =========================
+# Base Navigation MPPI Config
+# =========================
+@dataclass
+class NavigationMPPIEnvCfg(MPPIEnvCfg):
     """
-    Top-level configuration for entire system.
-
-    This acts as:
-    - experiment config
-    - entry-point config
+    Base config for navigation + MPPI.
+    Concrete env configs (e.g. static_env) should inherit from this.
     """
 
-    # -------------------------
-    # Task
-    # -------------------------
-    task: NavigationCfg = field(default_factory=NavigationCfg)
+    cost: CostCfg = field(default_factory=CostCfg)
+    terminations: TerminationCfg = field(default_factory=TerminationCfg)
 
-    # -------------------------
-    # Controller (Optional)
-    # -------------------------
-    tdmpc: Optional[tdmpcConfig] = None
+    horizon: int = 30
+    num_samples: int = 1500
 
-    # -------------------------
-    # Global settings (optional)
-    # -------------------------
-    seed: int = 42
-    device: str = "cuda"
+    collision_checker: object | None = None
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        # navigation common defaults
+        self.state_dim = 6
+        self.action_dim = 2
+        self.max_steps = self.terminations.max_steps
