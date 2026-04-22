@@ -4,6 +4,7 @@ import torch
 from source.simulator.envs.mppi_env_cfg import MPPIEnvCfg
 
 
+
 # =========================
 # Cost
 # =========================
@@ -11,12 +12,12 @@ from source.simulator.envs.mppi_env_cfg import MPPIEnvCfg
 class CostCfg:
     target_v: float = 8.0
 
-    goal_weight: float = 1.0
-    vel_weight: float = 1.0
+    goal_weight: float = 10.0
+    vel_weight: float = 10.0
     control_weight: float = 0.1
-    collision_weight: float = 5.0
+    collision_weight: float = 1000.0
 
-    goal_tolerance: float = 0.2
+    goal_tolerance: float = 0.5
 
 
 # =========================
@@ -29,13 +30,12 @@ class TerminationCfg:
     use_out_of_bounds: bool = True
     use_timeout: bool = True
 
-    max_steps: int = 200
+    max_steps: int = 500
     goal_tolerance: float = 0.2
 
 
-# =========================
+
 # Base Navigation MPPI Config
-# =========================
 @dataclass
 class NavigationMPPIEnvCfg(MPPIEnvCfg):
     """
@@ -47,7 +47,7 @@ class NavigationMPPIEnvCfg(MPPIEnvCfg):
     terminations: TerminationCfg = field(default_factory=TerminationCfg)
 
     horizon: int = 30
-    num_samples: int = 1500
+    num_samples: int = 3000
 
     collision_checker: object | None = None
 

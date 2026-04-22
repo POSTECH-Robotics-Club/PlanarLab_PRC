@@ -1,4 +1,5 @@
 import torch
+from typing import Dict
 
 
 class NavigationCost:
@@ -7,7 +8,7 @@ class NavigationCost:
     Pure cost computation only.
     """
 
-    def __init__(self, cfg, goal=None):
+    def __init__(self, cfg, goal=None, collision_checker=None):
         self.cfg = cfg
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -16,16 +17,18 @@ class NavigationCost:
 
         self.w_goal = cfg.goal_weight
         self.w_vel = cfg.vel_weight
-        self.w_control = cfg.control_weight
-        self.w_collision = cfg.collision_weight
+        self.control_weight = cfg.control_weight
+        self.collision_weight = cfg.collision_weight
 
         self.target_v = torch.tensor(cfg.target_v, device=self.device)
+
+        self.collision_checker = collision_checker
 
     def compute_cost(
         self,
         state: torch.Tensor,
         action: torch.Tensor | None = None,
-        collision: torch.Tensor | None = None,
+        info: Dict | None = None,
     ) -> torch.Tensor:
         if state.device != self.goal.device:
             goal = self.goal.to(state.device)
@@ -33,6 +36,7 @@ class NavigationCost:
         else:
             goal = self.goal
             target_v = self.target_v
+
 
         pos = state[..., :2]
 
@@ -45,15 +49,21 @@ class NavigationCost:
         vel_cost = (vel - target_v) ** 2
 
         cost = self.w_goal * goal_cost + self.w_vel * vel_cost
+     
+        # regulize the control action u
+        # if action is not None:
+        #     control_cost = torch.sum(action**2, dim=-1)
+        #     cost = cost + self.control_weight * control_cost
 
-        if action is not None:
-            control_cost = torch.sum(action**2, dim=-1)
-            cost = cost + self.w_control * control_cost
+        
+        collision = None
+        if self.collision_checker is not None:
+            collision = self.collision_checker.check_point(state)
 
         if collision is not None:
-            cost = cost + self.w_collision * collision.float()
-
-        return cost
+            cost = cost + self.collision_weight * collision.float()
+    
+        return cost.view(-1)
 
     def __call__(
         self,
@@ -68,18 +78,5 @@ class NavigationCost:
         return self.compute_cost(
             state=state,
             action=action,
-            collision=collision,
+            info=info,
         )
-
-    def compute_trajectory_cost(
-        self,
-        states: torch.Tensor,
-        actions: torch.Tensor | None = None,
-        collisions: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        step_costs = self.compute_cost(
-            state=states,
-            action=actions,
-            collision=collisions,
-        )
-        return step_costs.sum(dim=-1)

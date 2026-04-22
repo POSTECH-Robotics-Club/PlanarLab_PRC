@@ -19,8 +19,8 @@ class MPPIEnv:
 
         self.dt = cfg.dt
 
-        if cfg.cost_func is None:
-            raise ValueError("cfg.cost_func must not be None")
+        # if cfg.cost_func is None:
+        #     raise ValueError("cfg.cost_func must not be None")
         self._cost_func = cfg.cost_func
 
         self.u_min = cfg.u_min
@@ -42,6 +42,7 @@ class MPPIEnv:
             self.scene.reset()
 
         if state is None:
+            print("state initialized")
             state = self.cfg.init_state.clone().to(self.device)
 
         self.state = state.clone()
@@ -61,7 +62,7 @@ class MPPIEnv:
 
     def step(
         self, action: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, Dict]:
 
         if self.state is None:
             raise RuntimeError("Env must be reset before step().")
@@ -80,21 +81,22 @@ class MPPIEnv:
                 next_state.unsqueeze(0)
             ).squeeze(0)
 
-        cost = self.cost_function(
-            next_state.unsqueeze(0),
-            action.unsqueeze(0),
-            {
-                "env": self,
-                "collision": collision,
-            },
-        ).squeeze(0)
+        # # single step cost calculation
+        # cost = self.cost_function(
+        #     next_state.unsqueeze(0),
+        #     action.unsqueeze(0),
+        #     {
+        #         "env": self,
+        #         "collision": collision,
+        #     },
+        # ).squeeze(0)
 
         done = self._compute_done(next_state, collision)
 
         self.state = next_state
         self.step_count += 1
 
-        return next_state, cost, done, self.extras
+        return next_state, done, self.extras
 
     def _compute_done(
         self,

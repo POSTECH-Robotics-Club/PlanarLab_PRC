@@ -25,6 +25,8 @@ class CollisionChecker:
         self.dtype = obstacle_map._dtype
 
         self._map_torch = obstacle_map.convert_to_torch()
+        if self._map_torch is None:
+            raise ValueError("convert_to_torch() returned None")
 
         self._inflated_map = None
 
@@ -47,9 +49,8 @@ class CollisionChecker:
 
         self._inflated_map = (inflated > 0).squeeze(0).squeeze(0)
 
-    # ------------------------------------------------------------
+
     # core: collision + range check
-    # ------------------------------------------------------------
     def compute_collision(self, x: torch.Tensor, initial_state=None):
         """
         Args:
@@ -66,26 +67,25 @@ class CollisionChecker:
         if self._inflated_map is None:
             self._build_inflated_map()
 
+        assert self._inflated_map is not None, "_inflated_map is still None!"
+
         if x.device != self.device:
             x = x.to(self.device)
 
-        # ------------------------------------------------------------
+    
         # reshape safety
-        # ------------------------------------------------------------
         squeeze_back = False
         if x.dim() == 2:
             x = x.unsqueeze(1)
             squeeze_back = True
 
-        # ------------------------------------------------------------
+        
         # world -> grid
-        # ------------------------------------------------------------
         x_occ = (x / self.map._cell_size) + self.map._torch_cell_map_origin
         x_occ = torch.round(x_occ).long()
 
-        # ------------------------------------------------------------
+
         # initial state (range reference)
-        # ------------------------------------------------------------
         if initial_state is None:
             initial_state = x[0, 0]
 
@@ -98,9 +98,8 @@ class CollisionChecker:
                 initial_state[..., :2] / self.map._cell_size
             ) + self.map._torch_cell_map_origin
 
-        # ------------------------------------------------------------
+
         # out of bounds
-        # ------------------------------------------------------------
         out_of_bound = (
             (x_occ[..., 0] < 0)
             | (x_occ[..., 0] >= self._inflated_map.shape[0])
@@ -112,17 +111,15 @@ class CollisionChecker:
         x_occ[..., 0] = torch.clamp(x_occ[..., 0], 0, self._inflated_map.shape[0] - 1)
         x_occ[..., 1] = torch.clamp(x_occ[..., 1], 0, self._inflated_map.shape[1] - 1)
 
-        # ------------------------------------------------------------
+
         # collision lookup
-        # ------------------------------------------------------------
         collisions = self._inflated_map[x_occ[..., 0], x_occ[..., 1]].clone()
         collisions = collisions.float()
 
         collisions[out_of_bound] = 1.0
 
-        # ------------------------------------------------------------
+
         # range check (sensor-like constraint)
-        # ------------------------------------------------------------
         range_occ = torch.sqrt(
             (x_occ[..., 0] - init_occ[..., 0]) ** 2
             + (x_occ[..., 1] - init_occ[..., 1]) ** 2
@@ -140,23 +137,21 @@ class CollisionChecker:
         range_mask = collisions.clone()
         range_mask[out_of_range] = 0.0
 
-        # ------------------------------------------------------------
+
         # restore shape
-        # ------------------------------------------------------------
         if squeeze_back:
             collisions = collisions.squeeze(1)
             range_mask = range_mask.squeeze(1)
 
         return collisions, range_mask
 
-    # ------------------------------------------------------------
+
     # convenience APIs (MPPI / TDMPC friendly)
-    # ------------------------------------------------------------
     def check_point(self, state: torch.Tensor):
         """
         state: (B, 6)
         """
-        pos = state[..., :2]
+        pos = state[..., :2]   # (x, y) * (batch size)
         return self.compute_collision(pos)[0]
 
     def check_trajectory(self, states: torch.Tensor):

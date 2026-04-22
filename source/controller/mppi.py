@@ -4,9 +4,12 @@ Kohei Honda, 2023.
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Tuple, Dict
+
 import torch
 import torch.nn as nn
+from scipy.optimize import brentq, minimize_scalar
 from torch.distributions.multivariate_normal import MultivariateNormal
 
 
@@ -178,13 +181,28 @@ class MPPI(nn.Module):
     def forward(
         self, state: torch.Tensor, info: Dict = {}
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Solve the optimal control problem.
+        """Solve the optimal control problem for one timestep.
+
+        Algorithm steps:
+            1. Sample action sequences around previous solution
+            2. Rollout dynamics for all samples in parallel
+            3. Compute trajectory costs (stage + terminal)
+            4. Update temperature parameter (if auto-lambda enabled)
+            5. Compute importance weights using softmax
+            6. Compute optimal action as weighted average
+            7. Apply smoothing filter (if enabled)
+
         Args:
-            state (torch.Tensor): Current state.
+            state: Current state vector, shape (dim_state,).
+            info: Optional dictionary for passing additional context
+                to the cost function (e.g., reference trajectory).
+
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: Tuple of predictive control and state sequence.
+            Tuple of (optimal_action_seq, optimal_state_seq):
+                - optimal_action_seq: Shape (horizon, dim_control)
+                - optimal_state_seq: Shape (horizon + 1, dim_state)
         """
+        assert state.shape == (self._dim_state,)
 
         if not torch.is_tensor(state):
             state = torch.tensor(state, device=self._device, dtype=self._dtype)
@@ -192,7 +210,6 @@ class MPPI(nn.Module):
             if state.device != self._device or state.dtype != self._dtype:
                 state = state.to(self._device, self._dtype)
 
-        assert state.shape == (self._dim_state,)
 
         mean_action_seq = self._previous_action_seq.clone().detach()
 
@@ -201,17 +218,16 @@ class MPPI(nn.Module):
             sample_shape=self._sample_shape
         )
 
-        # noise injection with exploration
+        # Split samples: (1-exploration) inherit from previous, rest are random
         threshold = int(self._num_samples * (1 - self._exploration))
         inherited_samples = mean_action_seq + self._action_noises[:threshold]
         self._perturbed_action_seqs = torch.cat(
             [inherited_samples, self._action_noises[threshold:]]
         )
-        # clamp actions
+        # Enforce control limits
         self._perturbed_action_seqs = torch.clamp(
             self._perturbed_action_seqs, self._u_min, self._u_max
         )
-
 
         # rollout samples in parallel
         self._state_seq_batch[:, 0, :] = state.repeat(self._num_samples, 1)
@@ -222,7 +238,7 @@ class MPPI(nn.Module):
                 self._perturbed_action_seqs[:, t, :],
             )
 
-        # compute sample costs
+        # compute trajectory costs
         costs = torch.zeros(
             self._num_samples, self._horizon, device=self._device, dtype=self._dtype
         )
@@ -270,6 +286,8 @@ class MPPI(nn.Module):
             + terminal_costs
             #+ torch.sum(self._lambda * action_costs, dim=1) # TODO
         )
+
+        print("cost : ", costs)
 
         # calculate weights
         self._weights = torch.softmax(-costs / self._lambda, dim=0)

@@ -9,9 +9,8 @@ class MPPIEnvCfg:
     Generic MPPI config (env + controller runtime slots)
     """
 
-    # =========================
+
     # Env
-    # =========================
     dt: float = 0.1
     max_steps: int = 200
 
@@ -25,9 +24,8 @@ class MPPIEnvCfg:
     goal: Optional[torch.Tensor] = None
     goal_tolerance: float = 0.2
 
-    # =========================
+
     # MPPI
-    # =========================
     horizon: int = 20
     num_samples: int = 1000
 
@@ -36,18 +34,16 @@ class MPPIEnvCfg:
     exploration: float = 0.0
 
     sigmas: torch.Tensor = field(
-        default_factory=lambda: torch.tensor([0.3, 0.3])
+        default_factory=lambda: torch.tensor([0.5, 0.5])
     )
 
-    # =========================
+
     # Control limits
-    # =========================
     u_min: Optional[torch.Tensor] = None
     u_max: Optional[torch.Tensor] = None
 
-    # =========================
+
     # Runtime
-    # =========================
     device: str = "cuda"
     dtype: torch.dtype = torch.float32
     seed: int = 42
@@ -57,9 +53,8 @@ class MPPIEnvCfg:
     collision_checker: Optional[Any] = None
     render_fn: Optional[Callable] = None
 
-    # =========================
+
     # Post init
-    # =========================
     def __post_init__(self):
         if self.device == "cuda" and not torch.cuda.is_available():
             self.device = "cpu" 
@@ -70,12 +65,10 @@ class MPPIEnvCfg:
         if self.goal is not None:
             self.goal = self.goal.to(self.device)
 
-    # =========================
+
     # Validation
-    # =========================
     def validate(self):
         assert self.dynamics_model is not None
-        assert self.cost_func is not None
 
         assert self.u_min is not None
         assert self.u_max is not None

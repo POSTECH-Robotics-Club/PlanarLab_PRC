@@ -28,13 +28,16 @@ class CarDynamics:
 
         self.process_noise_std = cfg.process_noise_std
 
-    # =========================================================
     # core: nonlinear dynamics (USED BY MPPI / TD-MPC)
-    # =========================================================
     def step(self, state: torch.Tensor, action: torch.Tensor, dt: float):
         """
-        state:  (B, 6)
-        action: (B, 2)
+        Update robot state based on differential drive dynamics.
+        Args:
+            state (torch.Tensor): state batch tensor, shape (batch_size, 6) [x, y, theta, u, v, w]
+            action (torch.Tensor): control batch tensor, shape (batch_size, 2) [accel, steer]
+            delta_t (float): time step interval [s]
+        Returns:
+            torch.Tensor: shape (batch_size, 6) [x, y, theta, u, v, w]
         """
 
         x, y, theta, u, v, w = state.unbind(-1)
@@ -44,21 +47,15 @@ class CarDynamics:
 
         theta = self._wrap(theta)
 
-        # -----------------------
         # kinematics
-        # -----------------------
         new_x = x + dt * (u * torch.cos(theta) - v * torch.sin(theta))
         new_y = y + dt * (v * torch.cos(theta) + u * torch.sin(theta))
         new_theta = self._wrap(theta + dt * w)
 
-        # -----------------------
         # longitudinal
-        # -----------------------
         new_u = u + dt * accel
 
-        # -----------------------
         # lateral velocity (bicycle approx)
-        # -----------------------
         denom_v = (self.m * u - dt * (self.kf + self.kr))
         new_v = (
             self.m * u * v
@@ -75,9 +72,7 @@ class CarDynamics:
             - dt * self.lf * self.kf * steer * u
         ) / denom_w
 
-        # -----------------------
         # clamp stability
-        # -----------------------
         new_v = torch.clamp(new_v, -self.v_max, self.v_max)
         new_w = torch.clamp(new_w, -self.w_max, self.w_max)
 
@@ -85,17 +80,14 @@ class CarDynamics:
             [new_x, new_y, new_theta, new_u, new_v, new_w], dim=-1
         )
 
-        # -----------------------
         # optional noise (realism)
-        # -----------------------
         if self.process_noise_std > 0:
             next_state = next_state + torch.randn_like(next_state) * self.process_noise_std
 
         return next_state
 
-    # =========================================================
+
     # rollout helper (MPPI / TD-MPC)
-    # =========================================================
     def rollout(self, state, actions, dt):
         """
         state:   (B, 6)
