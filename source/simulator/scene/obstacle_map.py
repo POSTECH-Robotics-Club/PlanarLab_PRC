@@ -70,12 +70,12 @@ class ObstacleMap:
         self.x_lim = [-x_range / 2, x_range / 2]
         self.y_lim = [-y_range / 2, y_range / 2]
 
+
         self.circle_obs_list: List[CircleObstacle] = []
         self.rectangle_obs_list: List[RectangleObstacle] = []
 
-    # -------------------------
+
     # obstacle insertion
-    # -------------------------
     def add_circle_obstacle(self, center: np.ndarray, radius: float) -> None:
         assert len(center) == 2
         assert radius > 0
@@ -115,9 +115,8 @@ class ObstacleMap:
 
         self.rectangle_obs_list.append(RectangleObstacle(center, width, height))
 
-    # -------------------------
+
     # torch / visualization
-    # -------------------------
     def convert_to_torch(self):
         return torch.from_numpy(self._map).to(self._device, self._dtype)
 

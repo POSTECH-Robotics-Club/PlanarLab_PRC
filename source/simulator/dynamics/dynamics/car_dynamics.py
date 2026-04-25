@@ -26,6 +26,10 @@ class CarDynamics:
         self.v_max = torch.tensor(cfg.v_max, device=self.device, dtype=self.dtype)
         self.w_max = torch.tensor(cfg.w_max, device=self.device, dtype=self.dtype)
 
+        self.x_lim = torch.tensor(cfg.x_lim, device=self.device, dtype=self.dtype)
+        self.y_lim = torch.tensor(cfg.y_lim, device=self.device, dtype=self.dtype)
+
+
         self.process_noise_std = cfg.process_noise_std
 
     # core: nonlinear dynamics (USED BY MPPI / TD-MPC)
@@ -52,6 +56,11 @@ class CarDynamics:
         new_y = y + dt * (v * torch.cos(theta) + u * torch.sin(theta))
         new_theta = self._wrap(theta + dt * w)
 
+        # boundary clamp
+        new_x = torch.clamp(new_x, self.x_lim[0], self.x_lim[1])
+        new_y = torch.clamp(new_y, self.y_lim[0], self.y_lim[1])
+
+
         # longitudinal
         new_u = u + dt * accel
 
@@ -73,7 +82,8 @@ class CarDynamics:
         ) / denom_w
 
         # clamp stability
-        new_v = torch.clamp(new_v, -self.v_max, self.v_max)
+        new_u = torch.clamp(new_u, -self.v_max, self.v_max)
+        # new_v = torch.clamp(new_v, -self.v_max, self.v_max)
         new_w = torch.clamp(new_w, -self.w_max, self.w_max)
 
         next_state = torch.stack(
@@ -87,23 +97,6 @@ class CarDynamics:
         return next_state
 
 
-    # rollout helper (MPPI / TD-MPC)
-    def rollout(self, state, actions, dt):
-        """
-        state:   (B, 6)
-        actions: (B, T, 2)
-        return:  (B, T+1, 6)
-        """
-        traj = [state]
-
-        for t in range(actions.shape[1]):
-            state = self.step(state, actions[:, t], dt)
-            traj.append(state)
-
-        return torch.stack(traj, dim=1)
-
-    # =========================================================
     # optional utility
-    # =========================================================
     def _wrap(self, x):
         return (x + torch.pi) % (2 * torch.pi) - torch.pi

@@ -8,8 +8,6 @@ class MPPIEnvCfg:
     """
     Generic MPPI config (env + controller runtime slots)
     """
-
-
     # Env
     dt: float = 0.1
     max_steps: int = 200
@@ -48,11 +46,6 @@ class MPPIEnvCfg:
     dtype: torch.dtype = torch.float32
     seed: int = 42
 
-    dynamics_model: Optional[Any] = None
-    cost_func: Optional[Callable] = None
-    collision_checker: Optional[Any] = None
-    render_fn: Optional[Callable] = None
-
 
     # Post init
     def __post_init__(self):
@@ -68,8 +61,6 @@ class MPPIEnvCfg:
 
     # Validation
     def validate(self):
-        assert self.dynamics_model is not None
-
         assert self.u_min is not None
         assert self.u_max is not None
 

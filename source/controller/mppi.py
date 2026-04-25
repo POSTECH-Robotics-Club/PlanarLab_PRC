@@ -287,8 +287,6 @@ class MPPI(nn.Module):
             #+ torch.sum(self._lambda * action_costs, dim=1) # TODO
         )
 
-        print("cost : ", costs)
-
         # calculate weights
         self._weights = torch.softmax(-costs / self._lambda, dim=0)
 

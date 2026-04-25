@@ -1,35 +1,37 @@
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Tuple, Optional
 import torch
 
 from source.tasks.navigation.navigation_cfg import NavigationMPPIEnvCfg
-from source.simulator.dynamics.dynamics.car_dynamics import CarDynamics
-from source.tasks.navigation.static_env.mdp.cost import NavigationCost
 
+
+@dataclass
+class TaskCfg:
+    name: str = "navigation_static"
 
 
 # Robot
 @dataclass
 class RobotCfg:
-    start_pos: Tuple[float, float] = (-40.0, -40.0)
+    start_pos: Tuple[float, float] = (-45.0, -45.0)
 
-    u_min: Tuple[float, float] = (-10.0, -0.2)    # why u_min, u_max are also in DynamicsCfg?
-    u_max: Tuple[float, float] = (10.0, 0.2)
+    u_min: Tuple[float, float] = (-5.0, -0.2)    # why u_min, u_max are also in DynamicsCfg?
+    u_max: Tuple[float, float] = (5.0, 0.2)
 
     wheel_base: float = 0.28
-    radius: float = 0.5
+    radius: float = 1.0
 
 
 # Obstacles
 @dataclass
 class ObstacleCfg:
-    map_size: Tuple[int, int] = (120, 120)
+    map_size: Tuple[int, int] = (100, 100)
     cell_size: float = 0.1
 
     detect_range: float = 20.0
 
-    num_circle_obs: int = 18
-    num_rectangle_obs: int = 20
+    num_circle_obs: int = 20
+    num_rectangle_obs: int = 21
 
     circle_radius_range: Tuple[float, float] = (2.0, 5.0)
     rectangle_size_range: Tuple[float, float] = (3.0, 8.0)
@@ -43,7 +45,7 @@ class SceneCfg:
     robot: RobotCfg = field(default_factory=RobotCfg)
     obstacle: ObstacleCfg = field(default_factory=ObstacleCfg)
 
-    goal_pos: Tuple[float, float] = (40.0, 40.0)  # map_size/2 - 20
+    goal_pos: Tuple[float, float] = (45.0, 45.0)  # map_size/2 - 20
 
 
 # Dynamics
@@ -64,11 +66,30 @@ class DynamicsCfg:
 
     process_noise_std: float = 0.0
 
+    x_lim: Tuple[float, float] = (-50.0, 50.0)
+    y_lim: Tuple[float, float] = (-50.0, 50.0)
+
 
 # Simulation
 @dataclass
 class SimCfg:
     dt: float = 0.1
+
+@dataclass
+class RendererCfg:
+    enable: bool = True
+
+@dataclass
+class TerminationCfg:
+    use_goal: bool = True
+    use_collision: bool = True
+    use_out_of_bounds: bool = True
+    use_timeout: bool = True
+
+    max_steps: int = 500
+    goal_tolerance: float = 0.5
+
+    goal: Optional[torch.Tensor] = None  
 
 
 # Static Navigation MPPI Config
@@ -78,10 +99,13 @@ class NavigationStaticMPPIEnvCfg(NavigationMPPIEnvCfg):
     Static navigation config.
     Inherits common navigation MPPI settings from NavigationMPPIEnvCfg.
     """
-
+    task: TaskCfg= field(default_factory=TaskCfg)
     scene: SceneCfg = field(default_factory=SceneCfg)
     dynamics: DynamicsCfg = field(default_factory=DynamicsCfg)
     sim: SimCfg = field(default_factory=SimCfg)
+
+    renderer: RendererCfg = field(default_factory=RendererCfg)
+    terminations: TerminationCfg = field(default_factory=TerminationCfg)
 
     def __post_init__(self):
         super().__post_init__()
@@ -115,6 +139,8 @@ class NavigationStaticMPPIEnvCfg(NavigationMPPIEnvCfg):
             device=device,
         )
 
+        self.terminations.goal = self.goal
+
         # init state
         # state = [x, y, theta, u, v, w]
         self.init_state = torch.zeros(
@@ -129,7 +155,7 @@ class NavigationStaticMPPIEnvCfg(NavigationMPPIEnvCfg):
         )
 
         # runtime bindings
-        self.dynamics_model = CarDynamics(self.dynamics)
+        self.dynamics_model = None
 
         self.cost_func = None
 

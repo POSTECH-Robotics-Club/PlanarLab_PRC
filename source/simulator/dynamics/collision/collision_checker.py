@@ -5,6 +5,7 @@ Isaac Lab style separation:
 - ONLY geometry / occupancy query
 """
 
+from PIL.TiffImagePlugin import X_RESOLUTION
 import torch
 import torch.nn.functional as F
 
@@ -17,6 +18,7 @@ class CollisionChecker:
         detect_range: float = 4.0,
     ):
         self.map = obstacle_map
+        print("robot_radius : ", robot_radius)
 
         self.robot_radius = robot_radius
         self.detect_range = detect_range
@@ -143,7 +145,10 @@ class CollisionChecker:
             collisions = collisions.squeeze(1)
             range_mask = range_mask.squeeze(1)
 
+
         return collisions, range_mask
+
+    
 
 
     # convenience APIs (MPPI / TDMPC friendly)
