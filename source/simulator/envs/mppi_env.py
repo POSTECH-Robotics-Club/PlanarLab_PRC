@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from typing import Tuple, Dict, Any, Optional
 import torch
-from torch.distributed.distributed_c10d import dist_config
 
-from source.tasks.navigation.static_env.registry.static_env_registry import TASK_REGISTRY
+from source.simulator.registry.registry_core import TASK_REGISTRY
 
 
 class MPPIEnv:
     def __init__(self, cfg):
+        # to deployment decorator import whole folder
+        from source.simulator.registry.auto_import import auto_import_tasks
+        auto_import_tasks()
         self.cfg = cfg
+        print("TASK_REGISTRY:", TASK_REGISTRY.keys())
+        print("REQUESTED:", cfg.task.name)
 
         self.device = torch.device(cfg.device)
         self.dtype = cfg.dtype

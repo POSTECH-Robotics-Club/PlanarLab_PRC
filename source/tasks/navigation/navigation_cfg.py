@@ -1,15 +1,11 @@
 from dataclasses import dataclass, field
 
 from source.simulator.envs.mppi_env_cfg import MPPIEnvCfg
-from source.tasks.navigation.static_env.mdp.cost import NavigationCost
-
 
 
 # Cost (fine tuned)
 @dataclass
 class CostCfg:
-    class_type = NavigationCost
-
     target_v: float = 8.0
 
     goal_weight: float = 80.0

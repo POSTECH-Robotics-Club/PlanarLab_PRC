@@ -1,0 +1,1 @@
+from .registry.static_env_registry import NavigationStaticTask
