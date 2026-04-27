@@ -13,28 +13,27 @@ import torch.nn.functional as F
 class CollisionChecker:
     def __init__(
         self,
-        obstacle_map,
+        map,
         robot_radius: float = 1.0,
         detect_range: float = 4.0,
     ):
-        self.map = obstacle_map
+        self.map = map
         print("robot_radius : ", robot_radius)
 
         self.robot_radius = robot_radius
         self.detect_range = detect_range
 
-        self.device = obstacle_map._device
-        self.dtype = obstacle_map._dtype
+        self.device = map._device
+        self.dtype = map._dtype
 
-        self._map_torch = obstacle_map.convert_to_torch()
+        self._map_torch = map.convert_to_torch()
         if self._map_torch is None:
             raise ValueError("convert_to_torch() returned None")
 
         self._inflated_map = None
 
-    # ------------------------------------------------------------
+
     # build inflated map (robot radius)
-    # ------------------------------------------------------------
     def _build_inflated_map(self):
         radius_occ = int(round(self.robot_radius / self.map._cell_size))
         kernel_size = 2 * radius_occ + 1
@@ -70,11 +69,10 @@ class CollisionChecker:
             self._build_inflated_map()
 
         assert self._inflated_map is not None, "_inflated_map is still None!"
-
         if x.device != self.device:
             x = x.to(self.device)
 
-    
+
         # reshape safety
         squeeze_back = False
         if x.dim() == 2:
@@ -112,7 +110,6 @@ class CollisionChecker:
         # clamp indices
         x_occ[..., 0] = torch.clamp(x_occ[..., 0], 0, self._inflated_map.shape[0] - 1)
         x_occ[..., 1] = torch.clamp(x_occ[..., 1], 0, self._inflated_map.shape[1] - 1)
-
 
         # collision lookup
         collisions = self._inflated_map[x_occ[..., 0], x_occ[..., 1]].clone()
@@ -172,3 +169,6 @@ class CollisionChecker:
         """
         traj = self.check_trajectory(states)
         return traj.any(dim=-1)
+
+
+

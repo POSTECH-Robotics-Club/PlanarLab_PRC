@@ -34,7 +34,7 @@ class ObstacleScene:
         self._generate_obstacles()
 
         self.collision_checker = CollisionChecker(
-            obstacle_map=self.map,
+            map=self.map,
             robot_radius=robot_cfg.radius,
             detect_range=obs_cfg.detect_range,
         )
@@ -52,6 +52,18 @@ class ObstacleScene:
     def reset(self):
         self.map.clear_obstacles()
         self._generate_obstacles()
+
+        self.collision_checker = CollisionChecker(
+            map=self.map,
+            robot_radius=self.cfg.robot.radius,
+            detect_range=self.cfg.obstacle.detect_range,
+        )
+
+        self.goal = torch.tensor(
+            self.cfg.goal_pos,
+            device=self.device,
+            dtype=self.dtype,
+        )
 
 
 
