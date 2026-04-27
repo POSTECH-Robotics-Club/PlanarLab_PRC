@@ -36,3 +36,9 @@ Instead, it acts as a **sandbox for fast experimentation**, where ideas can be t
 ## Getting Started
 
 Coming soon.
+
+## Contact
+
+**Author:** Taehwan Won  
+**Affiliation:** Mechanical Engineering, POSTECH  
+**Email:** wonth1375@postech.ac.kr 
