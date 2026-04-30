@@ -18,7 +18,6 @@ class CollisionChecker:
         detect_range: float = 4.0,
     ):
         self.map = map
-        print("robot_radius : ", robot_radius)
 
         self.robot_radius = robot_radius
         self.detect_range = detect_range
@@ -26,29 +25,27 @@ class CollisionChecker:
         self.device = map._device
         self.dtype = map._dtype
 
-        self._map_torch = map.convert_to_torch()
-        if self._map_torch is None:
-            raise ValueError("convert_to_torch() returned None")
+        # self._map_torch = map.convert_to_torch()
+        # if self._map_torch is None:
+        #     raise ValueError("convert_to_torch() returned None")
 
         self._inflated_map = None
 
 
     # build inflated map (robot radius)
-    def _build_inflated_map(self):
+    def _build_inflated_map(self, map_tensor):
         radius_occ = int(round(self.robot_radius / self.map._cell_size))
-        kernel_size = 2 * radius_occ + 1
+        k = 2 * radius_occ + 1
 
-        kernel = torch.ones(
-            (1, 1, kernel_size, kernel_size),
-            device=self.device,
-            dtype=torch.float32,
+        kernel = torch.ones((1,1,k,k), device=self.device, dtype=torch.float32)
+
+        inflated = F.conv2d(
+            map_tensor.unsqueeze(0).unsqueeze(0).float(),
+            kernel,
+            padding=radius_occ
         )
 
-        map_tensor = self._map_torch.unsqueeze(0).unsqueeze(0).float()
-
-        inflated = F.conv2d(map_tensor, kernel, padding=radius_occ)
-
-        self._inflated_map = (inflated > 0).squeeze(0).squeeze(0)
+        return (inflated > 0).squeeze(0).squeeze(0)
 
 
     # core: collision + range check
@@ -65,12 +62,12 @@ class CollisionChecker:
             range_mask: (B,) or (B, H)
         """
 
-        if self._inflated_map is None:
-            self._build_inflated_map()
+        # if self._inflated_map is None:
+        #     self._build_inflated_map()
 
-        assert self._inflated_map is not None, "_inflated_map is still None!"
-        if x.device != self.device:
-            x = x.to(self.device)
+        # assert self._inflated_map is not None, "_inflated_map is still None!"
+        # if x.device != self.device:
+        #     x = x.to(self.device)
 
 
         # reshape safety
@@ -78,6 +75,10 @@ class CollisionChecker:
         if x.dim() == 2:
             x = x.unsqueeze(1)
             squeeze_back = True
+
+        map_tensor = self.map._torch_map
+
+        inflated_map = self._build_inflated_map(map_tensor)
 
         
         # world -> grid
@@ -102,17 +103,17 @@ class CollisionChecker:
         # out of bounds
         out_of_bound = (
             (x_occ[..., 0] < 0)
-            | (x_occ[..., 0] >= self._inflated_map.shape[0])
+            | (x_occ[..., 0] >= inflated_map.shape[0])
             | (x_occ[..., 1] < 0)
-            | (x_occ[..., 1] >= self._inflated_map.shape[1])
+            | (x_occ[..., 1] >= inflated_map.shape[1])
         )
 
         # clamp indices
-        x_occ[..., 0] = torch.clamp(x_occ[..., 0], 0, self._inflated_map.shape[0] - 1)
-        x_occ[..., 1] = torch.clamp(x_occ[..., 1], 0, self._inflated_map.shape[1] - 1)
+        x_occ[..., 0] = torch.clamp(x_occ[..., 0], 0, inflated_map.shape[0] - 1)
+        x_occ[..., 1] = torch.clamp(x_occ[..., 1], 0, inflated_map.shape[1] - 1)
 
         # collision lookup
-        collisions = self._inflated_map[x_occ[..., 0], x_occ[..., 1]].clone()
+        collisions = inflated_map[x_occ[..., 0], x_occ[..., 1]].clone()
         collisions = collisions.float()
 
         collisions[out_of_bound] = 1.0

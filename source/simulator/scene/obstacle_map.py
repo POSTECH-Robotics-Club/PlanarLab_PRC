@@ -18,6 +18,7 @@ import os
 class CircleObstacle:
     center: np.ndarray
     radius: float
+    velocity: np.ndarray  # (vx, vy)
 
 
 @dataclass
@@ -25,6 +26,7 @@ class RectangleObstacle:
     center: np.ndarray
     width: float
     height: float
+    velocity: np.ndarray  # (vx, vy)
 
 
 class ObstacleMap:
@@ -74,9 +76,11 @@ class ObstacleMap:
         self.circle_obs_list: List[CircleObstacle] = []
         self.rectangle_obs_list: List[RectangleObstacle] = []
 
+        self._torch_map = torch.from_numpy(self._map).to(self._device, self._dtype)
+
 
     # obstacle insertion
-    def add_circle_obstacle(self, center: np.ndarray, radius: float) -> None:
+    def add_circle_obstacle(self, center: np.ndarray, radius: float, velocity: np.ndarray,) -> None:
         assert len(center) == 2
         assert radius > 0
 
@@ -91,10 +95,10 @@ class ObstacleMap:
                     y = np.clip(center_occ[1] + j, 0, self._map.shape[1] - 1)
                     self._map[x, y] = 1
 
-        self.circle_obs_list.append(CircleObstacle(center, radius))
+        self.circle_obs_list.append(CircleObstacle(center, radius, velocity))
 
     def add_rectangle_obstacle(
-        self, center: np.ndarray, width: float, height: float
+        self, center: np.ndarray, width: float, height: float, velocity: np.ndarray
     ) -> None:
         assert len(center) == 2
         assert width > 0
@@ -113,12 +117,13 @@ class ObstacleMap:
 
         self._map[x_init:x_end, y_init:y_end] = 1
 
-        self.rectangle_obs_list.append(RectangleObstacle(center, width, height))
+        self.rectangle_obs_list.append(RectangleObstacle(center, width, height, velocity))
 
 
     # torch / visualization
     def convert_to_torch(self):
-        return torch.from_numpy(self._map).to(self._device, self._dtype)
+        self._torch_map = torch.from_numpy(self._map).to(self._device, self._dtype)
+        return self._torch_map
 
     def render_occupancy(self, ax, cmap="binary"):
         ax.imshow(self._map, cmap=cmap)
@@ -141,6 +146,101 @@ class ObstacleMap:
                     zorder=zorder,
                 )
             )
+
+    def rebuild_map(self):
+        # 1. clear occupancy grid
+        self._map.fill(0)
+
+        # 2. circle obstacles
+        for obs in self.circle_obs_list:
+            self._rasterize_circle_fast(obs.center, obs.radius)
+
+        # 3. rectangle obstacles
+        for obs in self.rectangle_obs_list:
+            self._rasterize_rectangle_fast(obs.center, obs.width, obs.height)
+
+    def _rasterize_circle_fast(self, center, radius):
+        cx = center[0] / self._cell_size + self._cell_map_origin[0]
+        cy = center[1] / self._cell_size + self._cell_map_origin[1]
+
+        cx = int(cx + 0.5)
+        cy = int(cy + 0.5)
+
+        r = int(radius / self._cell_size)
+
+        x_min = max(cx - r, 0)
+        x_max = min(cx + r + 1, self._map.shape[0])
+        y_min = max(cy - r, 0)
+        y_max = min(cy + r + 1, self._map.shape[1])
+
+        rr = r * r
+
+        for i in range(x_min, x_max):
+            dx = i - cx
+            dx2 = dx * dx
+
+            for j in range(y_min, y_max):
+                dy = j - cy
+                if dx2 + dy * dy <= rr:
+                    self._map[i, j] = 1
+
+    def _rasterize_rectangle_fast(self, center, width, height):
+        cx = center[0] / self._cell_size + self._cell_map_origin[0]
+        cy = center[1] / self._cell_size + self._cell_map_origin[1]
+
+        cx = int(cx + 0.5)
+        cy = int(cy + 0.5)
+
+        w = int(width / self._cell_size)
+        h = int(height / self._cell_size)
+
+        x_min = max(cx - w // 2, 0)
+        x_max = min(cx + w // 2 + 1, self._map.shape[0])
+
+        y_min = max(cy - h // 2, 0)
+        y_max = min(cy + h // 2 + 1, self._map.shape[1])
+
+        self._map[x_min:x_max, y_min:y_max] = 1
+
+
+
+    # for dynamic obstacle environment
+    def step(self, dt: float):
+        for obs in self.circle_obs_list:
+            # Move the obstacle
+            obs.center += obs.velocity * dt
+            
+            # Clamp the obstacle position to ensure it doesn't go out of bounds
+            obs.center[0] = np.clip(obs.center[0], self.x_lim[0], self.x_lim[1])
+            obs.center[1] = np.clip(obs.center[1], self.y_lim[0], self.y_lim[1])
+
+            # Add reflection effect when the obstacle hits the boundary
+            if obs.center[0] == self.x_lim[0] or obs.center[0] == self.x_lim[1]:
+                obs.velocity[0] = -obs.velocity[0]  # Reflect the velocity along X-axis
+
+            if obs.center[1] == self.y_lim[0] or obs.center[1] == self.y_lim[1]:
+                obs.velocity[1] = -obs.velocity[1]  # Reflect the velocity along Y-axis
+
+        for obs in self.rectangle_obs_list:
+            # Move the obstacle
+            obs.center += obs.velocity * dt
+            
+            # Clamp the obstacle position to ensure it doesn't go out of bounds
+            obs.center[0] = np.clip(obs.center[0], self.x_lim[0], self.x_lim[1])
+            obs.center[1] = np.clip(obs.center[1], self.y_lim[0], self.y_lim[1])
+
+            # Add reflection effect when the obstacle hits the boundary
+            if obs.center[0] == self.x_lim[0] or obs.center[0] == self.x_lim[1]:
+                obs.velocity[0] = -obs.velocity[0]  # Reflect the velocity along X-axis
+
+            if obs.center[1] == self.y_lim[0] or obs.center[1] == self.y_lim[1]:
+                obs.velocity[1] = -obs.velocity[1]  # Reflect the velocity along Y-axis
+
+        self.rebuild_map()
+
+
+        # Update the map after moving the obstacles
+        self._torch_map = torch.from_numpy(self._map).to(self._device, self._dtype)
 
     def clear_obstacles(self):
         self._map[:] = 0

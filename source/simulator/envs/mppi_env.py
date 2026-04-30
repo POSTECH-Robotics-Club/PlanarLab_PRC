@@ -96,6 +96,9 @@ class MPPIEnv:
         self.state = next_state
         self.step_count += 1
 
+        # scene update
+        self.scene.step(self.cfg.dt)
+
         collision = None
         if self.collision_checker is not None:
             collision = self.collision_checker.check_point(

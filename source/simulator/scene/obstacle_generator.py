@@ -2,6 +2,7 @@
 Random obstacle generator
 """
 
+from ipywidgets.widgets.widget_datetime import validate
 import numpy as np
 
 
@@ -37,6 +38,13 @@ def generate_random_obstacles(
                 rng.uniform(*random_y_range),
             ])
             r = rng.uniform(*radius_range)
+            theta = rng.uniform(0, 2 * np.pi)
+            speed = rng.uniform(2.0, 8.0)
+
+            v = np.array([
+                speed * np.cos(theta),
+                speed * np.sin(theta),
+            ])
 
             overlap = False
             for o in obstacle_map.circle_obs_list:
@@ -44,7 +52,7 @@ def generate_random_obstacles(
                     overlap = True
 
             if not overlap:
-                obstacle_map.add_circle_obstacle(c, r)
+                obstacle_map.add_circle_obstacle(c, r, v)
                 break
 
     # rectangles
@@ -56,6 +64,13 @@ def generate_random_obstacles(
             ])
             w = rng.uniform(*width_range)
             h = rng.uniform(*height_range)
+            theta = rng.uniform(0, 2 * np.pi)
+            speed = rng.uniform(2.0, 8.0)
+
+            v = np.array([
+                speed * np.cos(theta),
+                speed * np.sin(theta),
+            ])
 
             overlap = False
             for o in obstacle_map.circle_obs_list:
@@ -63,5 +78,5 @@ def generate_random_obstacles(
                     overlap = True
 
             if not overlap:
-                obstacle_map.add_rectangle_obstacle(c, w, h)
+                obstacle_map.add_rectangle_obstacle(c, w, h, v)
                 break

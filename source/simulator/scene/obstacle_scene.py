@@ -45,8 +45,9 @@ class ObstacleScene:
             dtype=dtype,
         )
 
-
-
+    # for dynamic environment
+    def step(self, dt: float):
+        pass
 
 
     def reset(self):
@@ -87,3 +88,15 @@ class ObstacleScene:
         )
 
         self.map.convert_to_torch()
+
+
+class DynamicObstacleScene(ObstacleScene):
+    def step(self, dt: float):
+        self.map.step(dt)
+
+        # update collision checker
+        self.collision_checker = CollisionChecker(
+            map=self.map,
+            robot_radius=self.cfg.robot.radius,
+            detect_range=self.cfg.obstacle.detect_range,
+        )
