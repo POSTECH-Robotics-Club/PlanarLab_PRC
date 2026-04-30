@@ -14,9 +14,10 @@ class TaskCfg:
 @dataclass
 class RobotCfg:
     start_pos: Tuple[float, float] = (-45.0, -45.0)
+    goal_pos: Tuple[float, float] = (45.0, 45.0)   # map_size/2 - 15
 
-    u_min: Tuple[float, float] = (-5.0, -0.2)    # why u_min, u_max are also in DynamicsCfg?
-    u_max: Tuple[float, float] = (5.0, 0.2)
+    u_min: Tuple[float, float] = (-10.0, -0.2)   
+    u_max: Tuple[float, float] = (10.0, 0.2)
 
     wheel_base: float = 0.28
     radius: float = 1.0
@@ -45,7 +46,6 @@ class SceneCfg:
     robot: RobotCfg = field(default_factory=RobotCfg)
     obstacle: ObstacleCfg = field(default_factory=ObstacleCfg)
 
-    goal_pos: Tuple[float, float] = (45.0, 45.0)  # map_size/2 - 20
 
 
 # Dynamics
@@ -58,8 +58,8 @@ class DynamicsCfg:
     kf: float = -120.0
     kr: float = -140.0
 
-    u_min: Tuple[float, float] = (-10.0, -0.2)
-    u_max: Tuple[float, float] = (10.0, 0.2)
+    u_min: Optional[Tuple[float, float]] = None
+    u_max: Optional[Tuple[float, float]] = None
 
     v_max: float = 30.0
     w_max: float = 1.0
@@ -128,13 +128,15 @@ class NavigationStaticMPPIEnvCfg(NavigationMPPIEnvCfg):
             dtype=self.dtype,
             device=device,
         )
+        self.dynamics.u_min = robot.u_min
+        self.dynamics.u_max = robot.u_max
 
         assert self.u_min.shape == (self.action_dim,)
         assert self.u_max.shape == (self.action_dim,)
 
         # goal
         self.goal = torch.tensor(
-            self.scene.goal_pos,
+            self.scene.robot.goal_pos,
             dtype=self.dtype,
             device=device,
         )

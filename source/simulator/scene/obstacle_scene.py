@@ -40,7 +40,7 @@ class ObstacleScene:
         )
 
         self.goal = torch.tensor(
-            cfg.goal_pos,
+            cfg.robot.goal_pos,
             device=device,
             dtype=dtype,
         )
@@ -60,7 +60,7 @@ class ObstacleScene:
         )
 
         self.goal = torch.tensor(
-            self.cfg.goal_pos,
+            self.cfg.robot.goal_pos,
             device=self.device,
             dtype=self.dtype,
         )

@@ -12,7 +12,6 @@ class MPPIEnv:
         from source.simulator.registry.auto_import import auto_import_tasks
         auto_import_tasks()
         self.cfg = cfg
-        print("TASK_REGISTRY:", TASK_REGISTRY.keys())
         print("REQUESTED:", cfg.task.name)
 
         self.device = torch.device(cfg.device)
