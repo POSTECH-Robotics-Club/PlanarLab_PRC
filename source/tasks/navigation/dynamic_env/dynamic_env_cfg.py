@@ -31,7 +31,7 @@ class ObstacleCfg:
 
     detect_range: float = 20.0
 
-    num_circle_obs: int = 6
+    num_circle_obs: int = 9
     num_rectangle_obs: int = 0
 
     circle_radius_range: Tuple[float, float] = (10.0, 10.0)

@@ -76,8 +76,6 @@ class ObstacleMap:
         self.circle_obs_list: List[CircleObstacle] = []
         self.rectangle_obs_list: List[RectangleObstacle] = []
 
-        self._torch_map = torch.from_numpy(self._map).to(self._device, self._dtype)
-
 
     # obstacle insertion
     def add_circle_obstacle(self, center: np.ndarray, radius: float, velocity: np.ndarray,) -> None:
@@ -122,8 +120,19 @@ class ObstacleMap:
 
     # torch / visualization
     def convert_to_torch(self):
-        self._torch_map = torch.from_numpy(self._map).to(self._device, self._dtype)
+        self._torch_map = torch.as_tensor(
+            self._map,
+            device=self._device,
+            dtype=self._dtype
+            )
         return self._torch_map
+
+    def get_torch_map(self):
+        return torch.as_tensor(
+            self._map,
+            device=self._device,
+            dtype=self._dtype
+        )
 
     def render_occupancy(self, ax, cmap="binary"):
         ax.imshow(self._map, cmap=cmap)
@@ -153,13 +162,13 @@ class ObstacleMap:
 
         # 2. circle obstacles
         for obs in self.circle_obs_list:
-            self._rasterize_circle_fast(obs.center, obs.radius)
+            self._rasterize_circle(obs.center, obs.radius)
 
         # 3. rectangle obstacles
         for obs in self.rectangle_obs_list:
-            self._rasterize_rectangle_fast(obs.center, obs.width, obs.height)
+            self._rasterize_rectangle(obs.center, obs.width, obs.height)
 
-    def _rasterize_circle_fast(self, center, radius):
+    def _rasterize_circle(self, center, radius):
         cx = center[0] / self._cell_size + self._cell_map_origin[0]
         cy = center[1] / self._cell_size + self._cell_map_origin[1]
 
@@ -184,7 +193,7 @@ class ObstacleMap:
                 if dx2 + dy * dy <= rr:
                     self._map[i, j] = 1
 
-    def _rasterize_rectangle_fast(self, center, width, height):
+    def _rasterize_rectangle(self, center, width, height):
         cx = center[0] / self._cell_size + self._cell_map_origin[0]
         cy = center[1] / self._cell_size + self._cell_map_origin[1]
 
@@ -237,10 +246,6 @@ class ObstacleMap:
                 obs.velocity[1] = -obs.velocity[1]  # Reflect the velocity along Y-axis
 
         self.rebuild_map()
-
-
-        # Update the map after moving the obstacles
-        self._torch_map = torch.from_numpy(self._map).to(self._device, self._dtype)
 
     def clear_obstacles(self):
         self._map[:] = 0

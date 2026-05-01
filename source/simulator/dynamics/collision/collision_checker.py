@@ -16,36 +16,48 @@ class CollisionChecker:
         map,
         robot_radius: float = 1.0,
         detect_range: float = 4.0,
+        mode: str = "dynamic",
     ):
         self.map = map
 
         self.robot_radius = robot_radius
         self.detect_range = detect_range
 
+        self.mode = mode  # "static" | "dynamic"
+
         self.device = map._device
         self.dtype = map._dtype
 
-        # self._map_torch = map.convert_to_torch()
-        # if self._map_torch is None:
-        #     raise ValueError("convert_to_torch() returned None")
-
         self._inflated_map = None
+
+        if self.mode == "static":
+            self._inflated_map = self._build_inflated_map(
+                self.map.get_torch_map()
+            )
 
 
     # build inflated map (robot radius)
     def _build_inflated_map(self, map_tensor):
+
+        map_tensor = map_tensor.to(self.device)
+
         radius_occ = int(round(self.robot_radius / self.map._cell_size))
         k = 2 * radius_occ + 1
 
-        kernel = torch.ones((1,1,k,k), device=self.device, dtype=torch.float32)
+        kernel = torch.ones(
+            (1, 1, k, k),
+            device=self.device,
+            dtype=map_tensor.dtype
+        )
 
         inflated = F.conv2d(
-            map_tensor.unsqueeze(0).unsqueeze(0).float(),
+            map_tensor.unsqueeze(0).unsqueeze(0).float().to(self.device),
             kernel,
             padding=radius_occ
         )
 
-        return (inflated > 0).squeeze(0).squeeze(0)
+        return (inflated > 0).squeeze()
+
 
 
     # core: collision + range check
@@ -62,12 +74,12 @@ class CollisionChecker:
             range_mask: (B,) or (B, H)
         """
 
-        # if self._inflated_map is None:
-        #     self._build_inflated_map()
+        if self.mode == "static":
+            inflated_map = self._inflated_map
 
-        # assert self._inflated_map is not None, "_inflated_map is still None!"
-        # if x.device != self.device:
-        #     x = x.to(self.device)
+        else:
+            map_tensor = self.map.get_torch_map()
+            inflated_map = self._build_inflated_map(map_tensor)
 
 
         # reshape safety
@@ -75,10 +87,6 @@ class CollisionChecker:
         if x.dim() == 2:
             x = x.unsqueeze(1)
             squeeze_back = True
-
-        map_tensor = self.map._torch_map
-
-        inflated_map = self._build_inflated_map(map_tensor)
 
         
         # world -> grid

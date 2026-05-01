@@ -37,6 +37,7 @@ class ObstacleScene:
             map=self.map,
             robot_radius=robot_cfg.radius,
             detect_range=obs_cfg.detect_range,
+            mode="static"
         )
 
         self.goal = torch.tensor(
@@ -58,6 +59,7 @@ class ObstacleScene:
             map=self.map,
             robot_radius=self.cfg.robot.radius,
             detect_range=self.cfg.obstacle.detect_range,
+            mode="static"
         )
 
         self.goal = torch.tensor(
@@ -91,12 +93,15 @@ class ObstacleScene:
 
 
 class DynamicObstacleScene(ObstacleScene):
-    def step(self, dt: float):
-        self.map.step(dt)
+    def __init__(self, cfg, device, dtype):
+        super().__init__(cfg, device, dtype)
 
-        # update collision checker
+        # override: dynamic mode
         self.collision_checker = CollisionChecker(
             map=self.map,
             robot_radius=self.cfg.robot.radius,
             detect_range=self.cfg.obstacle.detect_range,
+            mode="dynamic"
         )
+    def step(self, dt: float):
+        self.map.step(dt)
