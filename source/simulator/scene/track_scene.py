@@ -118,7 +118,11 @@ class TrackScene:
         self.robot_state[:2] = self.start_pos
 
         direction = self.centerline[1, :2] - self.centerline[0, :2]
-        self.robot_state[2] = torch.atan2(direction[1], direction[0])
+        self.robot_state[2] = torch.atan2(direction[1], direction[0])\
+
+    # for dynamic environment
+    def step(self, dt: float):
+        pass
 
 
 
@@ -138,6 +142,7 @@ class TrackScene:
             num_rectangle_obs=obs_cfg.num_rectangle_obs,
             width_range=obs_cfg.rectangle_size_range,
             height_range=obs_cfg.rectangle_size_range,
+            speed_range=obs_cfg.speed_range,
             max_iteration=200,
             seed=obs_cfg.seed,
         )

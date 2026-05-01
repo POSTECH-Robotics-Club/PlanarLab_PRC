@@ -15,6 +15,7 @@ def generate_random_obstacles(
     num_rectangle_obs,
     width_range,
     height_range,
+    speed_range,
     max_iteration,
     seed,
 ):
@@ -39,7 +40,7 @@ def generate_random_obstacles(
             ])
             r = rng.uniform(*radius_range)
             theta = rng.uniform(0, 2 * np.pi)
-            speed = rng.uniform(2.0, 8.0)
+            speed = rng.uniform(*speed_range)
 
             v = np.array([
                 speed * np.cos(theta),
@@ -65,7 +66,7 @@ def generate_random_obstacles(
             w = rng.uniform(*width_range)
             h = rng.uniform(*height_range)
             theta = rng.uniform(0, 2 * np.pi)
-            speed = rng.uniform(2.0, 8.0)
+            speed = rng.uniform(*speed_range)
 
             v = np.array([
                 speed * np.cos(theta),

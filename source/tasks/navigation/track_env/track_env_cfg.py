@@ -40,6 +40,7 @@ class ObstacleCfg:
     rectangle_size_range: Tuple[float, float] = (1.5, 2.5)
 
     detect_range: float = 20.0
+    speed_range: tuple[float, float] = (0.0, 0.0)
 
     seed: int = 42
 

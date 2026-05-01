@@ -1,5 +1,6 @@
 """
-Extracts a track path from colored Excel cells, orders it, scales it to real-world dimensions, interpolates points at a fixed resolution, and exports it as a CSV file.
+Extracts a track path from colored Excel cells, orders it, scales it to real-world dimensions,
+interpolates points at a fixed resolution, and exports it as a CSV file.
 """
 
 import sys
@@ -7,10 +8,10 @@ import csv
 from openpyxl import load_workbook
 import math
 
-# 인접 좌표 (상, 하, 좌, 우, 대각선 포함)
+# Neighboring directions (4-connected + diagonals)
 DIRS = [
-    (0,1),(0,-1),(1,0),(-1,0),  # 상하좌우
-    (1,1),(1,-1),(-1,1),(-1,-1)  # 대각선
+    (0,1),(0,-1),(1,0),(-1,0),  # up, down, left, right
+    (1,1),(1,-1),(-1,1),(-1,-1)  # diagonals
 ]
 
 def read_track_from_excel(xlsx_file):
@@ -22,8 +23,9 @@ def read_track_from_excel(xlsx_file):
     track_cells = set()
     for row in ws.iter_rows():
         for cell in row:
+            # Check if cell has a non-default fill color
             if cell.fill and cell.fill.start_color.type != 'auto' and cell.fill.start_color.rgb != "00000000":  # type: ignore
-                track_cells.add((cell.column, cell.row))  # (x,y)
+                track_cells.add((cell.column, cell.row))  # (x, y)
     return track_cells
 
 def find_neighbors(cell, track_cells):
@@ -37,12 +39,13 @@ def find_neighbors(cell, track_cells):
 
 def order_track(track_cells, closed):
     if closed:
-        start = min(track_cells, key=lambda c: (c[1], c[0]))  # 가장 좌상단
+        # For closed tracks, start from the top-left-most cell
+        start = min(track_cells, key=lambda c: (c[1], c[0]))
     else:
-        # 열린 경로의 시작점은 degree==1인 셀 중 좌상단
+        # For open tracks, start from an endpoint (degree == 1), preferring top-left
         ends = [c for c in track_cells if len(find_neighbors(c, track_cells)) == 1]
         if not ends:
-            raise ValueError("열린 경로인데 끝점이 없습니다.")
+            raise ValueError("Open track must have endpoints.")
         start = min(ends, key=lambda c: (c[1], c[0]))
 
     ordered = [start]
@@ -66,7 +69,7 @@ def interpolate_points(ordered_track, scale_x, scale_y, min_x, min_y, resolution
         x1, y1 = ordered_track[i]
         x2, y2 = ordered_track[i+1]
         
-        # 실제 좌표로 변환
+        # Convert grid coordinates to real-world coordinates
         x1_m = (x1 - min_x) * scale_x
         y1_m = (y1 - min_y) * scale_y
         x2_m = (x2 - min_x) * scale_x
@@ -78,6 +81,7 @@ def interpolate_points(ordered_track, scale_x, scale_y, min_x, min_y, resolution
         dy = y2_m - y1_m
         dist = math.hypot(dx, dy)
 
+        # Interpolate intermediate points if segment is longer than resolution
         if dist > resolution:
             steps = int(dist // resolution)
             for s in range(1, steps+1):
@@ -87,7 +91,7 @@ def interpolate_points(ordered_track, scale_x, scale_y, min_x, min_y, resolution
                     yi = y1_m + dy * t
                     result.append((xi, yi))
 
-    # 마지막 점 추가
+    # Append final point
     x_end = (ordered_track[-1][0] - min_x) * scale_x
     y_end = (ordered_track[-1][1] - min_y) * scale_y
     result.append((x_end, y_end))
@@ -96,7 +100,7 @@ def interpolate_points(ordered_track, scale_x, scale_y, min_x, min_y, resolution
 
 def main():
     if len(sys.argv) < 7:
-        print("사용법: python track_extract.py <input.xlsx> <output.csv> <open|closed> <width> <height> <resolution>")
+        print("Usage: python track_extract.py <input.xlsx> <output.csv> <open|closed> <width> <height> <resolution>")
         sys.exit(1)
 
     xlsx_file = sys.argv[1]
@@ -111,7 +115,7 @@ def main():
     track_cells = read_track_from_excel(xlsx_file)
     ordered_track = order_track(track_cells, closed)
 
-    # 셀 영역 크기 계산
+    # Compute bounding box of grid
     max_x = max(x for x, _ in track_cells)
     min_x = min(x for x, _ in track_cells)
     max_y = max(y for _, y in track_cells)
@@ -120,10 +124,13 @@ def main():
     grid_w = max_x - min_x + 1
     grid_h = max_y - min_y + 1
 
+    # Scale factors to real-world dimensions
     scale_x = width / grid_w
     scale_y = height / grid_h
 
-    interpolated_track = interpolate_points(ordered_track, scale_x, scale_y, min_x, min_y, resolution)
+    interpolated_track = interpolate_points(
+        ordered_track, scale_x, scale_y, min_x, min_y, resolution
+    )
 
     with open(csv_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)

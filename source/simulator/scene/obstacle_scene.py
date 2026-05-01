@@ -85,6 +85,7 @@ class ObstacleScene:
             num_rectangle_obs=obs_cfg.num_rectangle_obs,
             width_range=obs_cfg.rectangle_size_range,
             height_range=obs_cfg.rectangle_size_range,
+            speed_range=obs_cfg.speed_range,
             max_iteration=100,
             seed=obs_cfg.seed,
         )

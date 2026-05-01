@@ -37,9 +37,10 @@ class ObstacleCfg:
     circle_radius_range: Tuple[float, float] = (10.0, 10.0)
     rectangle_size_range: Tuple[float, float] = (15.0, 15.0)
 
-    # speed: Tuple[float, float] = rng.uniform(2.0, 8.0)
-
     seed: int = 42
+
+    speed_range: tuple[float, float] = (2.0, 8.0)
+
 
 
 # Scene

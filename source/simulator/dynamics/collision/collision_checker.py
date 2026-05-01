@@ -16,7 +16,7 @@ class CollisionChecker:
         map,
         robot_radius: float = 1.0,
         detect_range: float = 4.0,
-        mode: str = "dynamic",
+        mode: str = "static",
     ):
         self.map = map
 
