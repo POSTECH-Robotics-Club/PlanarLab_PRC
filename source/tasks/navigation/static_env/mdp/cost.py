@@ -50,16 +50,8 @@ class NavigationCost:
         effective_target_v = target_v * (1 - torch.exp(-3 * goal_cost))
         vel_cost = (vel - effective_target_v)**2
 
-
-        # print("vel_cost ; ", vel_cost)
-        # print("goal_cost : ", goal_cost)
-
-        # compelx cost
         cost = self.w_goal * goal_cost + self.w_vel * vel_cost
 
-        # simple cost
-        # cost = self.w_goal * goal_cost
-     
         # regulize the control action u
         # if action is not None:
         #     control_cost = torch.sum(action**2, dim=-1)

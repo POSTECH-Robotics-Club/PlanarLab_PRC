@@ -39,7 +39,7 @@ class ObstacleCfg:
 
     seed: int = 42
 
-    speed_range: tuple[float, float] = (2.0, 8.0)
+    speed_range: tuple[float, float] = (3.0, 8.0)
 
 
 
