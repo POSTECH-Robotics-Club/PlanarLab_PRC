@@ -2,7 +2,7 @@
 
 **PlanarLab** is a lightweight 2D simulation lab designed for rapid prototyping and validation of planning and control algorithms.
 
-It provides a simple yet flexible environment for experimenting with both model-based and learning-based methods, including trajectory optimization, sampling-based planners, and reinforcement learning approaches such as MPPI and TD-MPC.
+It provides a simple yet flexible environment for experimenting with both model-based method, including trajectory optimization and sampling-based planners such as MPPI.
 
 ## Key Features
 
@@ -18,8 +18,6 @@ It provides a simple yet flexible environment for experimenting with both model-
 * **Modular Architecture**
   Clean separation between environments, dynamics, and controllers.
 
-* **Hybrid Methods Ready**
-  Easily combine model-based planning (e.g., MPPI) with learning-based approaches (e.g., TD-MPC).
 
 ## Philosophy
 
@@ -29,9 +27,8 @@ Instead, it acts as a **sandbox for fast experimentation**, where ideas can be t
 ## Use Cases
 
 * Rapid prototyping of planning algorithms
-* Benchmarking model-based vs. learning-based control
 * Testing hybrid control pipelines
-* Educational and research experiments in control and RL
+* Educational and research experiments in control and planning
 
 ## Getting Started
 
