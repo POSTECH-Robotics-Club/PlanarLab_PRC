@@ -75,6 +75,6 @@ This project includes code derived from kohonda (2023), originally licensed unde
 ## Contact
 
 **Author:** Taehwan Won  
-**Affiliation:** Mechanical Engineering, POSTECH  
+**Affiliation:** POSTECH Robotics Club(PRC), Mechanical Engineering, POSTECH  
 **Email:** wonth1375@postech.ac.kr 
 
